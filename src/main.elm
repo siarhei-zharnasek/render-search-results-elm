@@ -3,7 +3,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
-import Json.Decode as Decode exposing (map2, map3)
+import Json.Decode as Decode exposing (map2, map7)
 import Url.Builder as Url
 
 
@@ -90,12 +90,12 @@ view model =
       viewValidation model,
       button [ onClick SubmitHandler ] [ text "Get results" ],
       br [] [],
-      div [] [ text (String.fromInt model.response.totalHits) ],
+      div [] [ text ("I found " ++ (String.fromInt model.response.totalHits) ++ " results") ],
       div [] (List.map renderEntities model.response.entities)
     ]
 
-renderKeywords : String -> Html msg
-renderKeywords word =
+listStringRender : String -> Html msg
+listStringRender word =
   div [] [
     text word
   ]
@@ -103,13 +103,22 @@ renderKeywords word =
 renderEntities : Item -> Html Msg
 renderEntities item =
   div [] [
-    div [] [text item.title],
-    br [] [],
+    h2 [] [text item.title],
+    h3 [] [text "Abstract"],
     div [] [text item.abstract],
-    br [] [],
-    div [] (List.map renderKeywords (Maybe.withDefault [] item.keywords)),
-    hr [] [],
-    br [] []
+    h3 [] [text "Keywords"],
+    div [] (List.map listStringRender (Maybe.withDefault [] item.keywords)),
+    h3 [] [text "Journal Title"],
+    div [] [text item.publicationDetail.publicationname],
+    h3 [] [text "Year"],
+    div [] [text (String.fromInt item.publicationDetail.hasPublicationYear)],
+    h3 [] [text "Authors"],
+    div [] (List.map listStringRender (Maybe.withDefault [] item.authors)),
+    h3 [] [text "Source"],
+    div [] [text item.source],
+    h3 [] [text "PUI"],
+    div [] [text item.pui],
+    hr [] []
   ]
 
 viewValidation : Model -> Html Msg
@@ -136,18 +145,43 @@ prepareQuery query =
       Url.string "title" query
     ]
 
-type alias Item = { title : String, abstract : String, keywords : Maybe (List String) }
+type alias Item =
+  {
+    title : String,
+    abstract : String,
+    keywords : Maybe (List String),
+    publicationDetail : PublicationDetails,
+    authors : Maybe (List String),
+    source : String,
+    pui : String
+  }
 
 keywordsDecode : Decode.Decoder (List String)
 keywordsDecode =
   Decode.list Decode.string
 
+type alias PublicationDetails = { publicationname : String, hasPublicationYear : Int }
+
+publicationDetailDecode : Decode.Decoder PublicationDetails
+publicationDetailDecode =
+  map2 PublicationDetails
+    (Decode.field "publicationname" Decode.string)
+    (Decode.field "hasPublicationYear" Decode.int)
+
+creatorDecode : Decode.Decoder (List String)
+creatorDecode =
+  Decode.list (Decode.field "name" Decode.string)
+
 itemDecode : Decode.Decoder Item
 itemDecode =
-  map3 Item
+  map7 Item
     (Decode.field "title" Decode.string)
     (Decode.field "abstract" Decode.string)
     (Decode.maybe (Decode.field "keywords" keywordsDecode))
+    (Decode.field "publicationDetail" publicationDetailDecode)
+    (Decode.maybe (Decode.field "creator" creatorDecode))
+    (Decode.field "provenance" (Decode.field "supplier" (Decode.field "name" Decode.string)))
+    (Decode.field "pui" Decode.string)
 
 entitiesDecoder : Decode.Decoder (List Item)
 entitiesDecoder =
