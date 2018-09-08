@@ -25,13 +25,14 @@ type alias Model =
   {
     query : String,
     response : ResponseItem,
-    error : String
+    error : String,
+    searchEntity : String
   }
 
 init : () -> (Model, Cmd Msg)
 init _ =
   (
-    Model "" ( ResponseItem 0 [] ) "",
+    Model "" ( ResponseItem 0 [] ) "" "Citation",
     Cmd.none
   )
 
@@ -42,6 +43,7 @@ type Msg
   = GetResponse (Result Http.Error ResponseItem)
   | InputHandler String
   | SubmitHandler
+  | SearchEntityChange String
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -72,6 +74,12 @@ update msg model =
         getResponse model.query
       )
 
+    SearchEntityChange searchEntity ->
+      (
+        {model | searchEntity = searchEntity},
+        Cmd.none
+      )
+
 
 -- SUBSCRIPTIONS
 
@@ -86,6 +94,10 @@ view : Model -> Html Msg
 view model =
   div []
     [
+      select [onInput SearchEntityChange] [
+        option [value "Citation"] [text "Citation"],
+        option [value "Substance"] [text "Substance"]
+      ],
       input [ type_ "text", value model.query, onInput InputHandler, autofocus True ] [],
       viewValidation model,
       button [ onClick SubmitHandler ] [ text "Get results" ],
