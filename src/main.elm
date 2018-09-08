@@ -3,7 +3,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
-import Json.Decode as Decode exposing (map, map2)
+import Json.Decode as Decode exposing (map2, map3)
 import Url.Builder as Url
 
 
@@ -91,12 +91,26 @@ view model =
       button [ onClick SubmitHandler ] [ text "Get results" ],
       br [] [],
       div [] [ text (String.fromInt model.response.totalHits) ],
-      div [] (List.map renderList model.response.entities)
+      div [] (List.map renderEntities model.response.entities)
     ]
 
-renderList : Item -> Html Msg
-renderList item =
-  div [] [ text item.title ]
+renderKeywords : String -> Html msg
+renderKeywords word =
+  div [] [
+    text word
+  ]
+
+renderEntities : Item -> Html Msg
+renderEntities item =
+  div [] [
+    div [] [text item.title],
+    br [] [],
+    div [] [text item.abstract],
+    br [] [],
+    div [] (List.map renderKeywords (Maybe.withDefault [] item.keywords)),
+    hr [] [],
+    br [] []
+  ]
 
 viewValidation : Model -> Html Msg
 viewValidation model =
@@ -122,12 +136,18 @@ prepareQuery query =
       Url.string "title" query
     ]
 
-type alias Item = { title : String }
+type alias Item = { title : String, abstract : String, keywords : Maybe (List String) }
+
+keywordsDecode : Decode.Decoder (List String)
+keywordsDecode =
+  Decode.list Decode.string
 
 itemDecode : Decode.Decoder Item
 itemDecode =
-  map Item
+  map3 Item
     (Decode.field "title" Decode.string)
+    (Decode.field "abstract" Decode.string)
+    (Decode.maybe (Decode.field "keywords" keywordsDecode))
 
 entitiesDecoder : Decode.Decoder (List Item)
 entitiesDecoder =
