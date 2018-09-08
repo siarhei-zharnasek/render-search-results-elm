@@ -3,7 +3,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
-import Json.Decode as Decode exposing (map2)
+import Json.Decode as Decode exposing (map, map2)
 import Url.Builder as Url
 
 
@@ -11,7 +11,8 @@ import Url.Builder as Url
 
 main =
   Browser.element
-    { init = init,
+    {
+      init = init,
       update = update,
       subscriptions = subscriptions,
       view = view
@@ -21,14 +22,16 @@ main =
 -- MODEL
 
 type alias Model =
-  { query : String,
+  {
+    query : String,
     response : ResponseItem,
     error : String
   }
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  ( Model "" ( ResponseItem 0 [] ) "",
+  (
+    Model "" ( ResponseItem 0 [] ) "",
     Cmd.none
   )
 
@@ -46,22 +49,26 @@ update msg model =
     GetResponse result ->
       case result of
         Ok response ->
-          ( { model | response = response, error = "" },
+          (
+            { model | response = response, error = "" },
             Cmd.none
           )
 
         Err error ->
-          ( { model | error = "Error on request" },
+          (
+            { model | error = "Error on request" },
             Cmd.none
           )
 
     InputHandler query ->
-      ( { model | query = query },
+      (
+        { model | query = query },
         Cmd.none
       )
 
     SubmitHandler ->
-      ( model,
+      (
+        model,
         getResponse model.query
       )
 
@@ -78,7 +85,8 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   div []
-    [ input [ type_ "text", value model.query, onInput InputHandler, autofocus True ] [],
+    [
+      input [ type_ "text", value model.query, onInput InputHandler, autofocus True ] [],
       viewValidation model,
       button [ onClick SubmitHandler ] [ text "Get results" ],
       br [] [],
@@ -86,9 +94,9 @@ view model =
       div [] (List.map renderList model.response.entities)
     ]
 
-renderList : String -> Html Msg
-renderList word =
-  div [] [ text word ]
+renderList : Item -> Html Msg
+renderList item =
+  div [] [ text item.title ]
 
 viewValidation : Model -> Html Msg
 viewValidation model =
@@ -106,20 +114,26 @@ getResponse query =
 prepareQuery : String -> String
 prepareQuery query =
   Url.crossOrigin "http://localhost:4200" ["search/", "citation", "search"]
-    [ Url.int "_from" 0,
+    [
+      Url.int "_from" 0,
       Url.int "_size" 20,
       Url.string "abstract" query,
       Url.string "keywords" query,
       Url.string "title" query
     ]
 
---type alias Item = { title : String }
+type alias Item = { title : String }
 
-entitiesDecoder : Decode.Decoder (List String)
+itemDecode : Decode.Decoder Item
+itemDecode =
+  map Item
+    (Decode.field "title" Decode.string)
+
+entitiesDecoder : Decode.Decoder (List Item)
 entitiesDecoder =
-  Decode.list (Decode.field "title" Decode.string)
+  Decode.list itemDecode
 
-type alias ResponseItem = { totalHits : Int, entities : List String }
+type alias ResponseItem = { totalHits : Int, entities : List Item }
 
 responseDecoder : Decode.Decoder ResponseItem
 responseDecoder =
