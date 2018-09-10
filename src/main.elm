@@ -25,7 +25,9 @@ type alias Model =
   {
     query : String,
     citations : CitationResponse,
+    citationQuery : String,
     substances : SubstanceResponse,
+    substanceQuery : String,
     error : String,
     searchEntity : String
   }
@@ -33,7 +35,7 @@ type alias Model =
 init : () -> (Model, Cmd Msg)
 init _ =
   (
-    Model "" (CitationResponse 0 []) (SubstanceResponse 0 []) "" "citation",
+    Model "" (CitationResponse 0 []) "" (SubstanceResponse 0 []) "" "" "citation",
     Cmd.none
   )
 
@@ -43,9 +45,11 @@ init _ =
 type Msg
   = GetCitationResponse (Result Http.Error CitationResponse)
   | GetSubstanceResponse (Result Http.Error SubstanceResponse)
-  | InputHandler String
+  | CitationInputHandler String
+  | SubstanceInputHandler String
   | SubmitHandler
   | SearchEntityChange String
+  | UpdateCitationQuery String
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -78,16 +82,22 @@ update msg model =
             Cmd.none
           )
 
-    InputHandler query ->
+    CitationInputHandler query ->
       (
-        {model | query = query},
+        {model | citationQuery = query},
+        Cmd.none
+      )
+
+    SubstanceInputHandler query ->
+      (
+        {model | substanceQuery = query},
         Cmd.none
       )
 
     SubmitHandler ->
       (
         model,
-        getResponse model.searchEntity model.query
+        getResponse model
       )
 
     SearchEntityChange searchEntity ->
@@ -96,6 +106,19 @@ update msg model =
         Cmd.none
       )
 
+    UpdateCitationQuery query ->
+      (
+        {model | citationQuery = query},
+        Cmd.none
+      )
+
+--updateEntityQuery : Model -> Cmd Msg
+--updateEntityQuery model =
+--  UpdateCitationQuery model.query
+--
+--fn : CitationResponse -> String -> CitationResponse
+--fn citations query =
+--  {citations | query = query}
 
 -- SUBSCRIPTIONS
 
@@ -114,7 +137,6 @@ view model =
         option [value "citation"] [text "Citation"],
         option [value "substance"] [text "Substance"]
       ],
-      input [type_ "text", value model.query, onInput InputHandler, autofocus True] [],
       viewValidation model,
       button [onClick SubmitHandler] [text "Get results"],
       br [] [],
@@ -125,10 +147,12 @@ renderResults : Model -> Html Msg
 renderResults model =
   if model.searchEntity == "citation"
   then div [] [
+    input [type_ "text", value model.citationQuery, onInput CitationInputHandler, autofocus True] [],
     text ("I found " ++ (String.fromInt model.citations.totalHits) ++ " results"),
     div [] (List.map renderCitationEntities model.citations.entities)
   ]
   else div [] [
+    input [type_ "text", value model.substanceQuery, onInput SubstanceInputHandler, autofocus True] [],
     text ("I found " ++ (String.fromInt model.substances.totalHits) ++ " results"),
     div [] (List.map renderSubstanceEntities model.substances.entities)
   ]
@@ -180,11 +204,11 @@ viewValidation model =
 
 -- HTTP
 
-getResponse : String -> String -> Cmd Msg
-getResponse searchEntity query =
-  if searchEntity == "citation"
-  then Http.send GetCitationResponse (Http.get (prepareCitationQuery query) citationResponseDecoder)
-  else Http.send GetSubstanceResponse (Http.get (prepareSubstanceQuery query) substanceResponseDecoder)
+getResponse : Model -> Cmd Msg
+getResponse model =
+  if model.searchEntity == "citation"
+  then Http.send GetCitationResponse (Http.get (prepareCitationQuery model.citationQuery) citationResponseDecoder)
+  else Http.send GetSubstanceResponse (Http.get (prepareSubstanceQuery model.substanceQuery) substanceResponseDecoder)
 
 prepareCitationQuery : String -> String
 prepareCitationQuery query =
