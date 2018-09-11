@@ -29,13 +29,14 @@ type alias Model =
     substances : SubstanceResponse,
     substanceQuery : String,
     error : String,
-    searchEntity : String
+    searchEntity : String,
+    loading : Bool
   }
 
 init : () -> (Model, Cmd Msg)
 init _ =
   (
-    Model "" (CitationResponse 0 []) "" (SubstanceResponse 0 []) "" "" "citation",
+    Model "" (CitationResponse 0 []) "" (SubstanceResponse 0 []) "" "" "citation" False,
     Cmd.none
   )
 
@@ -58,13 +59,13 @@ update msg model =
       case result of
         Ok citations ->
           (
-            {model | citations = citations, error = ""},
+            {model | citations = citations, error = "", loading = False},
             Cmd.none
           )
 
         Err error ->
           (
-            {model | error = "Error on request"},
+            {model | error = "Error on request", loading = False},
             Cmd.none
           )
 
@@ -72,13 +73,13 @@ update msg model =
       case result of
         Ok substances ->
           (
-            {model | substances = substances, error = ""},
+            {model | substances = substances, error = "", loading = False},
             Cmd.none
           )
 
         Err error ->
           (
-            {model | error = "Error on request"},
+            {model | error = "Error on request", loading = False},
             Cmd.none
           )
 
@@ -96,7 +97,7 @@ update msg model =
 
     SubmitHandler ->
       (
-        model,
+        {model | loading = True},
         getResponse model
       )
 
@@ -112,13 +113,6 @@ update msg model =
         Cmd.none
       )
 
---updateEntityQuery : Model -> Cmd Msg
---updateEntityQuery model =
---  UpdateCitationQuery model.query
---
---fn : CitationResponse -> String -> CitationResponse
---fn citations query =
---  {citations | query = query}
 
 -- SUBSCRIPTIONS
 
@@ -139,6 +133,7 @@ view model =
       ],
       viewValidation model,
       button [onClick SubmitHandler] [text "Get results"],
+      loading model.loading,
       br [] [],
       renderResults model
     ]
@@ -200,6 +195,25 @@ viewValidation model =
   if String.length model.error > 0
   then div [style "color" "red"] [text model.error]
   else div [] []
+
+loading : Bool -> Html Msg
+loading showLoading =
+  if showLoading
+  then div [
+    style "position" "absolute",
+    style "top" "0",
+    style "right" "0",
+    style "bottom" "0",
+    style "left" "0",
+    style "display" "flex",
+    style "justify-content" "center",
+    style "align-items" "center",
+    style "background" "gray",
+    style "opacity" "0.7",
+    style "color" "white",
+    style "font-size" "40px"
+  ] [text "loading"]
+  else div [style "position" "absolute"] []
 
 
 -- HTTP
